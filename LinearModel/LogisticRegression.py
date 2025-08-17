@@ -50,3 +50,57 @@ plt.xlabel('Predicted')
 plt.ylabel('Actual')
 plt.title('Confusion Matrix')
 plt.savefig("../output/Iris_ConfusionMatrixPlot.png")
+
+'''
+手搓一个逻辑回归梯度下降法 学习偏置列的手法
+'''
+
+# 加偏置列
+X = np.column_stack([np.ones(X.shape[0]), X])   # (150, 5)
+
+# 划分
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.4, random_state=0)
+
+#one-hot编码标签
+Y_train_onehot = np.eye(num_classes)[y_train]   # (90,3)
+
+# ---------- 3. 参数初始化 ----------
+n_features = X_train.shape[1]                   # 5
+W = np.zeros((n_features, num_classes))         # (5,3)
+
+# ---------- 4. 核心函数 ----------
+def softmax(Z):
+    """Z: (batch, k)"""
+    exp = np.exp(Z - np.max(Z, axis=1, keepdims=True))  # 数值稳定
+    return exp / exp.sum(axis=1, keepdims=True)
+
+def cross_entropy_loss(Y_true, Y_prob):
+    m = Y_true.shape[0]
+    return -np.sum(Y_true * np.log(Y_prob + 1e-15)) / m
+
+# ---------- 5. 训练 ----------
+lr = 0.1
+epochs = 1000
+m = X_train.shape[0]
+
+for epoch in range(epochs):
+    # 前向
+    logits = X_train @ W          # (90,3)
+    probs = softmax(logits)
+    loss = cross_entropy_loss(Y_train_onehot, probs)
+
+    # 梯度
+    grad = (1 / m) * X_train.T @ (probs - Y_train_onehot)  # (5,3)
+
+    # 更新
+    W -= lr * grad
+
+    if epoch % 200 == 0:
+        print(f"epoch {epoch:4d}  loss={loss:.4f}")
+
+# ---------- 6. 评估 ----------
+probs_test = softmax(X_test @ W)        # (60,3)
+y_pred = np.argmax(probs_test, axis=1)
+acc = (y_pred == y_test).mean()
+print("Test accuracy:", acc)
